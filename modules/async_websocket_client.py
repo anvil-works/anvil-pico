@@ -44,6 +44,15 @@ class AsyncWebsocketClient:
         self._lock_for_open.release()
         return to_return
 
+    async def close(self):
+        await self._lock_for_open.acquire()
+        if self._open:
+            self.write_frame(OP_CLOSE)
+            self.sock.close()
+        self._open = False
+        self._lock_for_open.release()
+
+
     def urlparse(self, uri):
         """Parse ws:// URLs"""
         match = URL_RE.match(uri)
@@ -84,8 +93,8 @@ class AsyncWebsocketClient:
             import ssl
             self.sock = ssl.wrap_socket(self.sock, server_hostname=self.uri.host, cert_reqs=ssl.CERT_REQUIRED, ca_certs=ca_certs)
 
-        await self.open(False)
-        
+        await self.close()
+
         def send_header(header, *args):
             self.sock.write(header % args + '\r\n')
 

@@ -8,13 +8,14 @@ import sys
 from machine import Pin
 
 __all__ = ['connect', 'connect_async', 'call', 'callable', 'callable_async', 'get_user_email']
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Ian Davies"
 
 # Update this with each release.
-NOT_BEFORE=1657018369
+NOT_BEFORE=1657267241
 
 ws = AsyncWebsocketClient()
+_stay_connected = True
     
 async def _s(v):
     #print("SEND:", v)
@@ -74,7 +75,7 @@ async def _incoming_call(data):
         })
         
 async def _anvil_listen():
-    while ws.open():
+    while await ws.open():
         data = await _r()
         if data:
             if data.get("objects"):
@@ -122,9 +123,14 @@ async def _launch_task(task, name):
         print(f"Exception running uplink task: {name}")
         sys.print_exception(e)
 
+async def _heartbeat():
+    while _stay_connected:
+        await a.sleep(10)
+        await call("anvil.private.echo", "keep-alive")
+
 async def _blink_led(led, interval, n=None):
     i = 0
-    while True:
+    while _stay_connected:
         if n is not None:
             i += 1
             if i > n:
@@ -134,15 +140,18 @@ async def _blink_led(led, interval, n=None):
     led.on()
 
 async def _connect_async(key, on_first_connect, on_every_connect, url, no_led):
+    global _stay_connected
+    _stay_connected = True
     if not no_led:
         led = Pin("LED", Pin.OUT, value=1)
-    while True:
+    while _stay_connected:
         try:
             blink_task = None
             if not no_led:
                 blink_task = a.create_task(_blink_led(led, 100))
             await _connect(key, url)
             await _register_callables()
+            a.create_task(_heartbeat())
             if blink_task:
                 blink_task.cancel()
                 a.create_task(_blink_led(led, 50,10))
@@ -160,6 +169,9 @@ async def _connect_async(key, on_first_connect, on_every_connect, url, no_led):
             print("Exception in uplink reconnection loop:")
             sys.print_exception(e)
         await a.sleep(1)
+
+async def raise_event(name, payload=None, session_id=None, session_ids=None, channel=None):
+    await anvil.pico.call("anvil.private.raise_event", name, payload, session_id=session_id, session_ids=session_ids, channel=channel)
 
 async def get_user_email(allow_remembered=True):
     return await call("anvil.private.users.get_current_user_email", allow_remembered=allow_remembered)
@@ -209,4 +221,8 @@ def connect_async(key, on_first_connect=None, on_every_connect=None, url="wss://
 def connect(key, on_first_connect=None, on_every_connect=None, url="wss://anvil.works/uplink", no_led=False):
     a.run(_connect_async(key, on_first_connect, on_every_connect, url, no_led))
 
-
+async def disconnect():
+    global _stay_connected
+    _stay_connected = False
+    await ws.close()
+    print("Anvil uplink disconnected")
