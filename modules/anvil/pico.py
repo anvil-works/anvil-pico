@@ -47,21 +47,23 @@ async def _incoming_call(data):
         if not f:
             raise Exception(f"No such function: {data.get('command')}")
         
-        call_stack_ids[id(a.current_task())] = data.get("call-stack-id")
-        #print("New task ID:", id(a.current_task()))
+        task_id = id(a.current_task())
+        try:
+            call_stack_ids[task_id] = data.get("call-stack-id")
+            #print("New task ID:", id(a.current_task()))
 
-        if f['require_user']:
-            email = await get_user_email()
-            #print("Got email", email)
-            if not email:
-                raise Exception("Unauthorised. You must be logged in to call this function.")
-            elif isinstance(f['require_user'], str) and email != f['require_user']:
-                raise Exception("Unauthorised. You are not authorised to call this function.")
-                
-        res = f['fn'](*data.get('args'), **data.get('kwargs'))
-        result = await res if f['is_async'] else res
-            
-        del call_stack_ids[id(a.current_task())]
+            if f['require_user']:
+                email = await get_user_email()
+                #print("Got email", email)
+                if not email:
+                    raise Exception("Unauthorised. You must be logged in to call this function.")
+                elif isinstance(f['require_user'], str) and email != f['require_user']:
+                    raise Exception("Unauthorised. You are not authorised to call this function.")
+                    
+            res = f['fn'](*data.get('args'), **data.get('kwargs'))
+            result = await res if f['is_async'] else res
+        finally:
+            del call_stack_ids[task_id]
 
         await _s({
             "id": data['id'],
@@ -209,10 +211,13 @@ async def call(fn_name, *args, **kwargs):
     await _s(req)
     while outstanding_calls[req_id] is RESPONSE_SENTINEL:
         await a.sleep_ms(5)
-    if 'response' in outstanding_calls[req_id]:
-        return outstanding_calls[req_id]['response']
-    else:
-        raise Exception(outstanding_calls[req_id]['error']['message'])
+    try:
+        if 'response' in outstanding_calls[req_id]:
+            return outstanding_calls[req_id]['response']
+        else:
+            raise Exception(outstanding_calls[req_id]['error']['message'])
+    finally:
+        del outstanding_calls[req_id]
     
 
 def connect_async(key, on_first_connect=None, on_every_connect=None, url="wss://anvil.works/uplink", no_led=False):    
