@@ -81,7 +81,7 @@ class AsyncWebsocketClient:
     #async def a_write(self, buf):
 
 
-    async def handshake(self, uri, headers=[], ca_certs=None):
+    async def handshake(self, uri, headers=[], cadata=None):
 
         self.sock = socket.socket()
         self.uri = self.urlparse(uri)
@@ -91,7 +91,7 @@ class AsyncWebsocketClient:
         self.sock.setblocking(False)
         if self.uri.secure:
             import ssl
-            self.sock = ssl.wrap_socket(self.sock, server_hostname=self.uri.host, cert_reqs=ssl.CERT_REQUIRED, ca_certs=ca_certs)
+            self.sock = ssl.wrap_socket(self.sock, server_hostname=self.uri.host, cert_reqs=ssl.CERT_REQUIRED, cadata=cadata)
 
         await self.close()
 

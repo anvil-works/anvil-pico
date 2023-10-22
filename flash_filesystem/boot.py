@@ -32,8 +32,15 @@ while not wlan or wlan.status() != 3:
             break
 
 # Set the RTC to the current time
-
-ntptime.settime()
+for i in range(10):
+    try:
+        print("Setting system time...")
+        ntptime.settime()
+        print(f"System time set to {ntptime.time()}")
+        break
+    except Exception as e:
+        print(f"Failed to set system time: {e}")
+        sleep(1)
 
 # Solid LED means we're connected and ready to go
 led.on()

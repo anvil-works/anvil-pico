@@ -1,5 +1,5 @@
 from async_websocket_client import AsyncWebsocketClient
-from ca_certs import LETSENCRYPT_ROOT
+from ca_root import LETSENCRYPT_ROOT_DER
 import uasyncio as a
 import time
 import json
@@ -8,11 +8,11 @@ import sys
 from machine import Pin
 
 __all__ = ['connect', 'connect_async', 'call', 'callable', 'callable_async', 'get_user_email']
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 __author__ = "Ian Davies"
 
 # Update this with each release.
-NOT_BEFORE=1657267241
+NOT_BEFORE=1697810870
 
 ws = AsyncWebsocketClient()
 _stay_connected = True
@@ -109,7 +109,7 @@ async def _connect(key, url):
         raise FatalException("System time invalid. Not connecting to Anvil.")
 
     print("Connecting to Anvil...")
-    await ws.handshake(url, ca_certs=LETSENCRYPT_ROOT)
+    await ws.handshake(url, cadata=LETSENCRYPT_ROOT_DER)
     print("Connected")
     await ws.open()
     await _s({"key": key, "v": 7, "device": "PICO_W"})
