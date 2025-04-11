@@ -8,7 +8,7 @@ import sys
 from machine import Pin
 
 __all__ = ['connect', 'connect_async', 'call', 'callable', 'callable_async', 'get_user_email']
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "Ian Davies"
 
 # Update this with each release.

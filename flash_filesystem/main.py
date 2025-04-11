@@ -1,3 +1,4 @@
+import connect_wifi
 import anvil.pico
 import uasyncio as a
 from machine import Pin
